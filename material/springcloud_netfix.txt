@@ -1,0 +1,194 @@
+Springcloud netfix
+
+1、spring-cloud-eureka-server（eureka注册中心）
+SpringCloudNetflixEurekaServerDemoApplication（启动类）：
+@EnableEurekaServer    //标注为eureka注册中心
+@SpringBootApplication
+public class SpringCloudNetflixEurekaServerDemoApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(SpringCloudNetflixEurekaServerDemoApplication.class, args);
+    }
+}
+application.yml
+spring:
+  application:
+    name: hello-spring-cloud-eureka
+server:
+  port: 8761
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    registerWithEureka: false
+    fetchRegistry: false
+    serviceUrl:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+dependency
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
+</dependency>
+2、spring-cloud-eureka-client（eureka客户端）
+SpringCloudNetflixEurekaServiceDemoApplication（启动类）
+@SpringBootApplication
+@EnableEurekaClient   //标注为eureka客户端
+public class SpringCloudNetflixEurekaServiceDemoApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(SpringCloudNetflixEurekaServiceDemoApplication.class, args);
+    }
+}
+application.yml
+spring:
+  application:
+    name: hello-spring-cloud-client-admin
+server:
+  port: 8763
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+dependency
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+3、spring-cloud-netflix-ribbon（ribbon客户端）
+SpringCloudNetflixRibbonApplication（启动类）
+@SpringBootApplication
+@EnableDiscoveryClient  //标注为可发现的客户端
+@EnableHystrix  //标注为允许熔断器
+public class SpringCloudNetflixRibbonApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(SpringCloudNetflixRibbonApplication.class, args);
+    }
+}
+application.yml
+spring:
+  application:
+    name: hello-spring-cloud-web-admin-ribbon
+server:
+  port: 8764
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+RestTemplate对象
+@Configuration
+public class MyConfig {
+    @Bean
+    @LoadBalanced   //标注为负载均衡客户端
+    public RestTemplate getRestTemplate(){
+        return new RestTemplate();
+    }
+}
+Service
+@Service
+public class MyService {
+    @Autowired
+    private RestTemplate restTemplate;
+
+    @HystrixCommand(fallbackMethod = "hiError")   //指明处理熔断的方法名
+public String sayHi(String message){
+    String result = restTemplate.getForObject(
+            "http://hello-spring-cloud-service-admin/hi?message="+message,String.class);
+    return result;
+}
+    public String hiError(String message){
+        return "您的网络不稳定，请检查您的网络状况";
+    }
+}
+
+dependency
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-ribbon</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+</dependency>
+
+4、spring-cloud-netflix-feign（feign客户端）
+SpringCloudNetflixFeignApplication（启动类）
+@SpringBootApplication
+@EnableDiscoveryClient  //标注为可发现的客户端
+@EnableFeignClients  //标注为feign客户端
+@EnableHystrixDashboard   //标注为支持熔断器
+public class SpringCloudNetflixFeignApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(SpringCloudNetflixFeignApplication.class, args);
+    }
+}
+application.yml
+spring:
+  application:
+    name: hello-spring-cloud-web-admin-feign
+server:
+  port: 8765
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+feign:
+  hystrix:
+    enabled: true  // 开启熔断器
+HystrixService接口（为支持hystrix的熔断功能，需要在service接口中配置熔断处理类）
+@FeignClient(value = "hello-spring-cloud-service-admin",fallback = AdminHystrixService.class)
+public interface MyService {
+    @RequestMapping("hi")
+    public String sayHi(@RequestParam("message") String message);
+}
+dependency
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-openfeign</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-hystrix-dashboard</artifactId>
+</dependency>
+5、spring-cloud-zuul（zuul网关）
+SpringCloudZuulApplication（启动类）
+@SpringBootApplication
+@EnableEurekaClient  //注明为eureka客户端
+@EnableZuulProxy  //注明为允许开启zuul网关代理
+public class SpringCloudZuulApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(SpringCloudZuulApplication.class, args);
+    }
+}
+application.yml
+spring:
+  application:
+    name: hello-spring-cloud-zuul
+server:
+  port: 8769
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+zuul:
+  routes:
+    api-a:
+      path: /api/a/**
+      serviceId: hello-spring-cloud-web-admin-ribbon
+    api-b:
+      path: /api/b/**
+      serviceId: hello-spring-cloud-web-admin-feign
+
+dependency
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-zuul</artifactId>
+</dependency>
+
+
+
+
+
+
+
